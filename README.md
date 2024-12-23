@@ -1,4 +1,5 @@
 # Knowledge Graph Memory Server
+[![smithery badge](https://smithery.ai/badge/mcp-knowledge-graph)](https://smithery.ai/server/mcp-knowledge-graph)
 
 An improved implementation of persistent memory using a local knowledge graph with a customizable `--memory-path`.
 
