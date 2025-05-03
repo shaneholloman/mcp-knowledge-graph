@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/shaneholloman-mcp-knowledge-graph-badge.png)](https://mseep.ai/app/shaneholloman-mcp-knowledge-graph)
+
 # `mcp-knowledge-graph`
 
 > Knowledge Graph Memory Server
