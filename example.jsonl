@@ -1,6 +1,7 @@
-{"type":"entity","data":{"name":"Alice_Smith","entityType":"person","observations":["Works as a software engineer","Lives in San Francisco","Speaks Mandarin fluently"]}}
-{"type":"entity","data":{"name":"ML_Project_X","entityType":"project","observations":["Started in 2023","Focus on natural language processing","Currently in development phase"]}}
-{"type":"entity","data":{"name":"TechCorp","entityType":"organization","observations":["Founded in 2010","Specializes in AI development","Headquartered in San Francisco"]}}
-{"type":"relation","data":{"from":"Alice_Smith","to":"ML_Project_X","relationType":"leads"}}
-{"type":"relation","data":{"from":"Alice_Smith","to":"TechCorp","relationType":"works_at"}}
-{"type":"relation","data":{"from":"TechCorp","to":"ML_Project_X","relationType":"owns"}
+{"type":"_aim","source":"mcp-knowledge-graph"}
+{"type":"entity","name":"Alice_Smith","entityType":"person","observations":["Works as a software engineer","Lives in San Francisco","Speaks Mandarin fluently"]}
+{"type":"entity","name":"ML_Project_X","entityType":"project","observations":["Started in 2023","Focus on natural language processing","Currently in development phase"]}
+{"type":"entity","name":"TechCorp","entityType":"organization","observations":["Founded in 2010","Specializes in AI development","Headquartered in San Francisco"]}
+{"type":"relation","from":"Alice_Smith","to":"ML_Project_X","relationType":"leads"}
+{"type":"relation","from":"Alice_Smith","to":"TechCorp","relationType":"works_at"}
+{"type":"relation","from":"TechCorp","to":"ML_Project_X","relationType":"owns"}

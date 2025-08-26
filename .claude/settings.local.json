@@ -5,7 +5,23 @@
       "Bash(npm run build:*)",
       "Bash(npm install)",
       "Bash(npm version:*)",
-      "Bash(npm publish:*)"
+      "Bash(npm publish:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run:*)",
+      "Bash(node:*)",
+      "Bash(rm:*)",
+      "Read(//Users/shaneholloman/**)",
+      "mcp__memory__read_graph",
+      "mcp__memory__create_entities",
+      "mcp__memory__create_relations",
+      "Bash(mkdir:*)",
+      "mcp__memory__search_nodes",
+      "Bash(sed:*)",
+      "mcp__memory__aim_read_graph",
+      "mcp__memory__aim_list_databases"
+    ],
+    "additionalDirectories": [
+      "/Users/shaneholloman/Dropbox/shane/db"
     ]
   },
   "enableAllProjectMcpServers": false

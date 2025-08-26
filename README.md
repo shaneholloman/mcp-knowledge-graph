@@ -1,163 +1,56 @@
-# `mcp-knowledge-graph`
+# MCP Knowledge Graph
 
-> Knowledge Graph Memory Server
+**Persistent memory for AI models through a local knowledge graph.**
 
-An improved implementation of persistent memory using a local knowledge graph with a customizable `--memory-path`.
+Store and retrieve information across conversations using entities, relations, and observations. Works with Claude Code/Desktop and any MCP-compatible AI platform.
 
-This lets AI models remember information about the user across chats. It works with any AI model that supports the Model Context Protocol (MCP) or function calling capabilities.
+## Why ".aim" and "aim_" prefixes?
 
-> [!NOTE]
-> This is a fork of the original [Memory Server](https://github.com/modelcontextprotocol/servers/tree/main/src/memory) and is intended to not use the ephemeral memory npx installation method.
+AIM stands for **AI Memory** - the core concept of this knowledge graph system. The three AIM elements provide clear organization and safety:
 
-## Server Name
+- **`.aim` directories**: Keep AI memory files organized and easily identifiable
+- **`aim_` tool prefixes**: Group related memory functions together in multi-tool setups
+- **`_aim` safety markers**: Each memory file starts with `{"type":"_aim","source":"mcp-knowledge-graph"}` to prevent accidental overwrites of unrelated JSONL files
 
-```txt
-mcp-knowledge-graph
-```
+This consistent AIM naming makes it obvious which directories, tools, and files belong to our AI memory system.
 
-![screen-of-server-name](https://raw.githubusercontent.com/shaneholloman/mcp-knowledge-graph/main/img/server-name.png)
+## Storage Logic
 
-![read-function](https://raw.githubusercontent.com/shaneholloman/mcp-knowledge-graph/main/img/read-function.png)
+**File Location Priority:**
 
-## Core Concepts
+1. **Project with `.aim`** - Uses `.aim/memory.jsonl` (project-local)
+2. **No project/no .aim** - Uses configured global directory
+3. **Contexts** - Adds suffix: `memory-work.jsonl`, `memory-personal.jsonl`
 
-### Entities
+**Safety System:**
 
-Entities are the primary nodes in the knowledge graph. Each entity has:
+- Every memory file starts with `{"type":"_aim","source":"mcp-knowledge-graph"}`
+- System refuses to write to files without this marker
+- Prevents accidental overwrite of unrelated JSONL files
 
-- A unique name (identifier)
-- An entity type (e.g., "person", "organization", "event")
-- A list of observations
+## Master Database Concept
 
-Example:
+**The master database is your primary memory store** - used by default when no specific database is requested. It's always named `default` in listings and stored as `memory.jsonl`.
 
-```json
-{
-  "name": "John_Smith",
-  "entityType": "person",
-  "observations": ["Speaks fluent Spanish"]
-}
-```
+- **Default Behavior**: All memory operations use the master database unless you specify a different one
+- **Always Available**: Exists in both project-local and global locations
+- **Primary Storage**: Your main knowledge graph that persists across all conversations
+- **Named Databases**: Optional additional databases (`work`, `personal`, `health`) for organizing specific topics
 
-### Relations
+## Key Features
 
-Relations define directed connections between entities. They are always stored in active voice and describe how entities interact or relate to each other.
+- **Master Database**: Primary memory store used by default for all operations
+- **Multiple Databases**: Optional named databases for organizing memories by topic
+- **Project Detection**: Automatic project-local memory using `.aim` directories
+- **Location Override**: Force operations to use project or global storage
+- **Safe Operations**: Built-in protection against overwriting unrelated files
+- **Database Discovery**: List all available databases in both locations
 
-Example:
+## Quick Start
 
-```json
-{
-  "from": "John_Smith",
-  "to": "ExampleCorp",
-  "relationType": "works_at"
-}
-```
+### Global Memory (Recommended)
 
-### Observations
-
-Observations are discrete pieces of information about an entity. They are:
-
-- Stored as strings
-- Attached to specific entities
-- Can be added or removed independently
-- Should be atomic (one fact per observation)
-
-Example:
-
-```json
-{
-  "entityName": "John_Smith",
-  "observations": [
-    "Speaks fluent Spanish",
-    "Graduated in 2019",
-    "Prefers morning meetings"
-  ]
-}
-```
-
-## API
-
-### Tools
-
-- **create_entities**
-  - Create multiple new entities in the knowledge graph
-  - Input: `entities` (array of objects)
-    - Each object contains:
-      - `name` (string): Entity identifier
-      - `entityType` (string): Type classification
-      - `observations` (string[]): Associated observations
-  - Ignores entities with existing names
-
-- **create_relations**
-  - Create multiple new relations between entities
-  - Input: `relations` (array of objects)
-    - Each object contains:
-      - `from` (string): Source entity name
-      - `to` (string): Target entity name
-      - `relationType` (string): Relationship type in active voice
-  - Skips duplicate relations
-
-- **add_observations**
-  - Add new observations to existing entities
-  - Input: `observations` (array of objects)
-    - Each object contains:
-      - `entityName` (string): Target entity
-      - `contents` (string[]): New observations to add
-  - Returns added observations per entity
-  - Fails if entity doesn't exist
-
-- **delete_entities**
-  - Remove entities and their relations
-  - Input: `entityNames` (string[])
-  - Cascading deletion of associated relations
-  - Silent operation if entity doesn't exist
-
-- **delete_observations**
-  - Remove specific observations from entities
-  - Input: `deletions` (array of objects)
-    - Each object contains:
-      - `entityName` (string): Target entity
-      - `observations` (string[]): Observations to remove
-  - Silent operation if observation doesn't exist
-
-- **delete_relations**
-  - Remove specific relations from the graph
-  - Input: `relations` (array of objects)
-    - Each object contains:
-      - `from` (string): Source entity name
-      - `to` (string): Target entity name
-      - `relationType` (string): Relationship type
-  - Silent operation if relation doesn't exist
-
-- **read_graph**
-  - Read the entire knowledge graph
-  - No input required
-  - Returns complete graph structure with all entities and relations
-
-- **search_nodes**
-  - Search for nodes based on query
-  - Input: `query` (string)
-  - Searches across:
-    - Entity names
-    - Entity types
-    - Observation content
-  - Returns matching entities and their relations
-
-- **open_nodes**
-  - Retrieve specific nodes by name
-  - Input: `names` (string[])
-  - Returns:
-    - Requested entities
-    - Relations between requested entities
-  - Silently skips non-existent nodes
-
-## Usage with MCP-Compatible Platforms
-
-This server can be used with any AI platform that supports the Model Context Protocol (MCP) or function calling capabilities, including Claude, GPT, Llama, and others.
-
-### Setup with Claude Desktop
-
-Add this to your claude_desktop_config.json:
+Add to your `claude_desktop_config.json` or `.claude.json`:
 
 ```json
 {
@@ -168,31 +61,147 @@ Add this to your claude_desktop_config.json:
         "-y",
         "mcp-knowledge-graph",
         "--memory-path",
-        "/Users/shaneholloman/Dropbox/shane/db/memory.jsonl"
-      ],
-      "autoapprove": [
-        "create_entities",
-        "create_relations",
-        "add_observations",
-        "delete_entities",
-        "delete_observations",
-        "delete_relations",
-        "read_graph",
-        "search_nodes",
-        "open_nodes"
+        "/Users/yourusername/.aim/"
       ]
-    },
+    }
   }
 }
 ```
 
-### Setup with Other AI Platforms
+This creates memory files in your specified directory:
 
-Any AI platform that supports function calling or the MCP standard can connect to this server. The specific configuration will depend on the platform, but the server exposes standard tools through the MCP interface.
+- `memory.jsonl` - **Master Database** (default for all operations)
+- `memory-work.jsonl` - Work database
+- `memory-personal.jsonl` - Personal database
+- etc.
 
-### Custom Memory Path
+### Project-Local Memory
 
-You can specify a custom path for the memory file:
+In any project, create a `.aim` directory:
+
+```bash
+mkdir .aim
+```
+
+Now memory tools automatically use `.aim/memory.jsonl` (project-local **master database**) instead of global storage when run from this project.
+
+## How AI Uses Databases
+
+Once configured, AI models use the **master database by default** or can specify named databases with a `context` parameter. New databases are created automatically - no setup required:
+
+```json
+// Master Database (default - no context needed)
+aim_create_entities({
+  entities: [{
+    name: "John_Doe",
+    entityType: "person",
+    observations: ["Met at conference"]
+  }]
+})
+
+// Work database
+aim_create_entities({
+  context: "work",
+  entities: [{
+    name: "Q4_Project",
+    entityType: "project",
+    observations: ["Due December 2024"]
+  }]
+})
+
+// Personal database
+aim_create_entities({
+  context: "personal",
+  entities: [{
+    name: "Mom",
+    entityType: "person",
+    observations: ["Birthday March 15th"]
+  }]
+})
+
+// Master database in specific location
+aim_create_entities({
+  location: "global",
+  entities: [{
+    name: "Important_Info",
+    entityType: "reference",
+    observations: ["Stored in global master database"]
+  }]
+})
+```
+
+## File Organization
+
+**Global Setup:**
+
+```tree
+/Users/yourusername/.aim/
+├── memory.jsonl           # Master Database (default)
+├── memory-work.jsonl      # Work database
+├── memory-personal.jsonl  # Personal database
+└── memory-health.jsonl    # Health database
+```
+
+**Project Setup:**
+
+```tree
+my-project/
+├── .aim/
+│   ├── memory.jsonl       # Project Master Database (default)
+│   └── memory-work.jsonl  # Project Work database
+└── src/
+```
+
+## Available Tools
+
+- `aim_create_entities` - Add new people, projects, events
+- `aim_create_relations` - Link entities together
+- `aim_add_observations` - Add facts to existing entities
+- `aim_search_nodes` - Find information by keyword
+- `aim_read_graph` - View entire memory
+- `aim_open_nodes` - Retrieve specific entities by name
+- `aim_list_databases` - Show all available databases and current location
+- `aim_delete_entities` - Remove entities
+- `aim_delete_observations` - Remove specific facts
+- `aim_delete_relations` - Remove connections
+
+### Parameters
+
+- `context` (optional) - Specify named database (`work`, `personal`, etc.). Defaults to **master database**
+- `location` (optional) - Force `project` or `global` storage location. Defaults to auto-detection
+
+## Database Discovery
+
+Use `aim_list_databases` to see all available databases:
+
+```json
+{
+  "project_databases": [
+    "default",      // Master Database (project-local)
+    "project-work"  // Named database
+  ],
+  "global_databases": [
+    "default",      // Master Database (global)
+    "work",
+    "personal",
+    "health"
+  ],
+  "current_location": "project (.aim directory detected)"
+}
+```
+
+**Key Points:**
+
+- **"default"** = Master Database in both locations
+- **Current location** shows whether you're using project or global storage
+- **Master database exists everywhere** - it's your primary memory store
+- **Named databases** are optional additions for specific topics
+
+## Configuration Examples
+
+**Important:** Always specify `--memory-path` to control where your memory files are stored.
+
+**Home directory:**
 
 ```json
 {
@@ -203,69 +212,85 @@ You can specify a custom path for the memory file:
         "-y",
         "mcp-knowledge-graph",
         "--memory-path",
-        "/Users/shaneholloman/Dropbox/shane/db/memory.jsonl"
-      ],
-      "autoapprove": [
-        "create_entities",
-        "create_relations",
-        "add_observations",
-        "delete_entities",
-        "delete_observations",
-        "delete_relations",
-        "read_graph",
-        "search_nodes",
-        "open_nodes"
+        "/Users/yourusername/.aim"
       ]
-    },
+    }
   }
 }
 ```
 
-If no path is specified, it will default to memory.jsonl in the server's installation directory.
+**Custom location (e.g., Dropbox):**
 
-### System Prompt
-
-The prompt for utilizing memory depends on the use case and the AI model you're using. Changing the prompt will help the model determine the frequency and types of memories created.
-
-Here is an example prompt for chat personalization that can be adapted for any AI model. For Claude users, you could use this prompt in the "Custom Instructions" field of a [Claude.ai Project](https://www.anthropic.com/news/projects). For other models, adapt it to their respective instruction formats.
-
-```txt
-Follow these steps for each interaction:
-
-1. User Identification:
-   - You should assume that you are interacting with default_user
-   - If you have not identified default_user, proactively try to do so.
-
-2. Memory Retrieval:
-   - Always begin your chat by saying only "Remembering..." and retrieve all relevant information from your knowledge graph
-   - Always refer to your knowledge graph as your "memory"
-
-3. Memory Gathering:
-   - While conversing with the user, be attentive to any new information that falls into these categories:
-     a) Basic Identity (age, gender, location, job title, education level, etc.)
-     b) Behaviors (interests, habits, etc.)
-     c) Preferences (communication style, preferred language, etc.)
-     d) Goals (goals, targets, aspirations, etc.)
-     e) Relationships (personal and professional relationships up to 3 degrees of separation)
-
-4. Memory Update:
-   - If any new information was gathered during the interaction, update your memory as follows:
-     a) Create entities for recurring organizations, people, and significant events
-     b) Connect them to the current entities using relations
-     c) Store facts about them as observations
+```json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-knowledge-graph",
+        "--memory-path",
+        "/Users/yourusername/Dropbox/.aim"
+      ]
+    }
+  }
+}
 ```
 
-## Integration with Other AI Models
+**Auto-approve all operations:**
 
-This server implements the Model Context Protocol (MCP) standard, making it compatible with any AI model that supports function calling. The knowledge graph structure and API are model-agnostic, allowing for flexible integration with various AI platforms.
+```json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-knowledge-graph",
+        "--memory-path",
+        "/Users/yourusername/.aim"
+      ],
+      "autoapprove": [
+        "aim_create_entities",
+        "aim_create_relations",
+        "aim_add_observations",
+        "aim_search_nodes",
+        "aim_read_graph",
+        "aim_open_nodes",
+        "aim_list_databases"
+      ]
+    }
+  }
+}
+```
 
-To integrate with other models:
+## Troubleshooting
 
-1. Configure the model to access the MCP server
-2. Ensure the model can make function calls to the exposed tools
-3. Adapt the system prompt to the specific model's instruction format
-4. Use the same knowledge graph operations regardless of the model
+**"File does not contain required _aim safety marker" error:**
+
+- The file may not belong to this system
+- Manual JSONL files need `{"type":"_aim","source":"mcp-knowledge-graph"}` as first line
+- If you created the file manually, add the `_aim` marker or delete and let the system recreate it
+
+**Memories going to unexpected locations:**
+
+- Check if you're in a project directory with `.aim` folder (uses project-local storage)
+- Otherwise uses the configured global `--memory-path` directory
+- Use `aim_list_databases` to see all available databases and current location
+- Use `ls .aim/` or `ls /Users/yourusername/.aim/` to see your memory files
+
+**Too many similar databases:**
+
+- AI models try to use consistent names, but may create variations
+- Manually delete unwanted database files if needed
+- Encourage AI to use simple, consistent database names
+- **Remember**: Master database is always available as the default - named databases are optional
+
+## Requirements
+
+- Node.js 18+
+- MCP-compatible AI platform
 
 ## License
 
-This MCP server is licensed under the MIT License. This means you are free to use, modify, and distribute the software, subject to the terms and conditions of the MIT License. For more details, please see the LICENSE file in the project repository.
+MIT
