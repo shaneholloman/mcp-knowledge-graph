@@ -1,0 +1,3 @@
+{"type":"_aim","source":"mcp-knowledge-graph"}
+{"type":"entity","name":"Local_Project_Entity","entityType":"project_test","observations":["Created in .aim directory","Should be project-local","Testing project detection"]}
+{"type":"entity","name":"NPM_Publication_Test","entityType":"milestone","observations":["Successfully published version 1.2.0","Updated Claude config to use npx","All database functionality working perfectly"]}
