@@ -14,6 +14,25 @@ AIM stands for **AI Memory** - the core concept of this knowledge graph system. 
 
 This consistent AIM naming makes it obvious which directories, tools, and files belong to our AI memory system.
 
+## CRITICAL: Understanding `.aim` dir vs `_aim` file marker
+
+**Two different things with similar names:**
+
+- `.aim` = **Project-local directory name** (MUST be named exactly `.aim` for project detection to work)
+- `_aim` = **File safety marker** (appears inside JSONL files: `{"type":"_aim","source":"mcp-knowledge-graph"}`)
+
+**For project-local storage:**
+
+- Directory MUST be named `.aim` in your project root
+- Example: `my-project/.aim/memory.jsonl`
+- The system specifically looks for this exact name
+
+**For global storage (--memory-path):**
+
+- Can be ANY directory you want
+- Examples: `~/yourusername/.aim/`, `~/memories/`, `~/Dropbox/ai-memory/`, `~/Documents/ai-data/`
+- Complete flexibility - choose whatever location works for you
+
 ## Storage Logic
 
 **File Location Priority:**
