@@ -4,15 +4,15 @@
 
 Store and retrieve information across conversations using entities, relations, and observations. Works with Claude Code/Desktop and any MCP-compatible AI platform.
 
-## Why ".aim" and "aim_" prefixes?
+## Why ".aim" and "aim_memory_" prefixes?
 
-AIM stands for **AI Memory** - the core concept of this knowledge graph system. The three AIM elements provide clear organization and safety:
+AIM stands for **AI Memory** - the core concept of this system. The three AIM elements provide clear organization and safety:
 
 - **`.aim` directories**: Keep AI memory files organized and easily identifiable
-- **`aim_` tool prefixes**: Group related memory functions together in multi-tool setups
+- **`aim_memory_` tool prefixes**: Group all memory tools together and make their purpose obvious
 - **`_aim` safety markers**: Each memory file starts with `{"type":"_aim","source":"mcp-knowledge-graph"}` to prevent accidental overwrites of unrelated JSONL files
 
-This consistent AIM naming makes it obvious which directories, tools, and files belong to our AI memory system.
+This consistent AIM naming makes it obvious which directories, tools, and files belong to the AI memory system.
 
 ## CRITICAL: Understanding `.aim` dir vs `_aim` file marker
 
@@ -69,18 +69,40 @@ This consistent AIM naming makes it obvious which directories, tools, and files 
 
 ### Global Memory (Recommended)
 
-Add to your `claude_desktop_config.json` or `.claude.json`:
+Add to your `claude_desktop_config.json` or `.claude.json`. Two common approaches:
+
+**Option 1: Default `.aim` directory (simple)**
 
 ```json
 {
   "mcpServers": {
-    "memory": {
+    "Aim-Memory-Bank": {
       "command": "npx",
       "args": [
         "-y",
         "mcp-knowledge-graph",
         "--memory-path",
-        "/Users/yourusername/.aim/"
+        "/Users/yourusername/.aim"
+      ]
+    }
+  }
+}
+```
+
+**Option 2: Dropbox/cloud sync (portable)**
+
+For accessing memories across multiple machines, use a synced folder. This is how the author of this MCP server keeps his own memories:
+
+```json
+{
+  "mcpServers": {
+    "Aim-Memory-Bank": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-knowledge-graph",
+        "--memory-path",
+        "/Users/yourusername/Dropbox/ai-memory"
       ]
     }
   }
@@ -110,7 +132,7 @@ Once configured, AI models use the **master database by default** or can specify
 
 ```json
 // Master Database (default - no context needed)
-aim_create_entities({
+aim_memory_store({
   entities: [{
     name: "John_Doe",
     entityType: "person",
@@ -119,7 +141,7 @@ aim_create_entities({
 })
 
 // Work database
-aim_create_entities({
+aim_memory_store({
   context: "work",
   entities: [{
     name: "Q4_Project",
@@ -129,7 +151,7 @@ aim_create_entities({
 })
 
 // Personal database
-aim_create_entities({
+aim_memory_store({
   context: "personal",
   entities: [{
     name: "Mom",
@@ -139,7 +161,7 @@ aim_create_entities({
 })
 
 // Master database in specific location
-aim_create_entities({
+aim_memory_store({
   location: "global",
   entities: [{
     name: "Important_Info",
@@ -173,16 +195,16 @@ my-project/
 
 ## Available Tools
 
-- `aim_create_entities` - Add new people, projects, events
-- `aim_create_relations` - Link entities together
-- `aim_add_observations` - Add facts to existing entities
-- `aim_search_nodes` - Find information by keyword
-- `aim_read_graph` - View entire memory
-- `aim_open_nodes` - Retrieve specific entities by name
-- `aim_list_databases` - Show all available databases and current location
-- `aim_delete_entities` - Remove entities
-- `aim_delete_observations` - Remove specific facts
-- `aim_delete_relations` - Remove connections
+- `aim_memory_store` - Store new memories (people, projects, concepts)
+- `aim_memory_add_facts` - Add facts to existing memories
+- `aim_memory_link` - Link two memories together
+- `aim_memory_search` - Search memories by keyword
+- `aim_memory_get` - Retrieve specific memories by exact name
+- `aim_memory_read_all` - Read all memories in a database
+- `aim_memory_list_stores` - List available databases
+- `aim_memory_forget` - Forget memories
+- `aim_memory_remove_facts` - Remove specific facts from a memory
+- `aim_memory_unlink` - Remove links between memories
 
 ### Parameters
 
@@ -191,7 +213,7 @@ my-project/
 
 ## Database Discovery
 
-Use `aim_list_databases` to see all available databases:
+Use `aim_memory_list_stores` to see all available databases:
 
 ```json
 {
@@ -220,48 +242,12 @@ Use `aim_list_databases` to see all available databases:
 
 **Important:** Always specify `--memory-path` to control where your memory files are stored.
 
-**Home directory:**
+**Auto-approve read operations (recommended):**
 
 ```json
 {
   "mcpServers": {
-    "memory": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-knowledge-graph",
-        "--memory-path",
-        "/Users/yourusername/.aim"
-      ]
-    }
-  }
-}
-```
-
-**Custom location (e.g., Dropbox):**
-
-```json
-{
-  "mcpServers": {
-    "memory": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-knowledge-graph",
-        "--memory-path",
-        "/Users/yourusername/Dropbox/.aim"
-      ]
-    }
-  }
-}
-```
-
-**Auto-approve all operations:**
-
-```json
-{
-  "mcpServers": {
-    "memory": {
+    "Aim-Memory-Bank": {
       "command": "npx",
       "args": [
         "-y",
@@ -270,13 +256,10 @@ Use `aim_list_databases` to see all available databases:
         "/Users/yourusername/.aim"
       ],
       "autoapprove": [
-        "aim_create_entities",
-        "aim_create_relations",
-        "aim_add_observations",
-        "aim_search_nodes",
-        "aim_read_graph",
-        "aim_open_nodes",
-        "aim_list_databases"
+        "aim_memory_search",
+        "aim_memory_get",
+        "aim_memory_read_all",
+        "aim_memory_list_stores"
       ]
     }
   }
@@ -295,7 +278,7 @@ Use `aim_list_databases` to see all available databases:
 
 - Check if you're in a project directory with `.aim` folder (uses project-local storage)
 - Otherwise uses the configured global `--memory-path` directory
-- Use `aim_list_databases` to see all available databases and current location
+- Use `aim_memory_list_stores` to see all available databases and current location
 - Use `ls .aim/` or `ls /Users/yourusername/.aim/` to see your memory files
 
 **Too many similar databases:**
