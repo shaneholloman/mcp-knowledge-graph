@@ -128,6 +128,42 @@ interface KnowledgeGraph {
   relations: Relation[];
 }
 
+// Format a knowledge graph as human-readable text
+function formatGraphPretty(graph: KnowledgeGraph, context?: string): string {
+  const lines: string[] = [];
+  const dbName = context || 'default';
+
+  lines.push(`=== ${dbName} database ===`);
+  lines.push('');
+
+  // Entities section
+  if (graph.entities.length === 0) {
+    lines.push('ENTITIES: (none)');
+  } else {
+    lines.push(`ENTITIES (${graph.entities.length}):`);
+    for (const entity of graph.entities) {
+      lines.push(`  ${entity.name} [${entity.entityType}]`);
+      for (const obs of entity.observations) {
+        lines.push(`    - ${obs}`);
+      }
+    }
+  }
+
+  lines.push('');
+
+  // Relations section
+  if (graph.relations.length === 0) {
+    lines.push('RELATIONS: (none)');
+  } else {
+    lines.push(`RELATIONS (${graph.relations.length}):`);
+    for (const rel of graph.relations) {
+      lines.push(`  ${rel.from} --${rel.relationType}--> ${rel.to}`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
 // The KnowledgeGraphManager class contains all operations to interact with the knowledge graph
 class KnowledgeGraphManager {
   private async loadGraph(context?: string, location?: 'project' | 'global'): Promise<KnowledgeGraph> {
@@ -630,15 +666,16 @@ EXAMPLES:
         name: "aim_read_graph",
         description: `Read the entire knowledge graph.
 
-DATABASE SELECTION: Reads from the specified database or master database if no database is specified.
+FORMAT OPTIONS:
+- "json" (default): Structured JSON for programmatic use
+- "pretty": Human-readable text format
 
-LOCATION OVERRIDE: Use the 'location' parameter to force reading from 'project' (.aim directory) or 'global' (configured directory). Leave blank for auto-detection.
+DATABASE: Reads from the specified 'context' database, or master database if not specified.
 
 EXAMPLES:
-- Master database (default): aim_read_graph({})
-- Work database: aim_read_graph({context: "work"})
-- Master database in global location: aim_read_graph({location: "global"})
-- Personal database in project location: aim_read_graph({context: "personal", location: "project"})`,
+- aim_read_graph({}) - JSON format
+- aim_read_graph({format: "pretty"}) - Human-readable
+- aim_read_graph({context: "work", format: "pretty"}) - Work database, pretty`,
         inputSchema: {
           type: "object",
           properties: {
@@ -649,7 +686,12 @@ EXAMPLES:
             location: {
               type: "string",
               enum: ["project", "global"],
-              description: "Optional storage location override. 'project' forces project-local .aim directory, 'global' forces global directory. If not specified, uses automatic detection."
+              description: "Optional storage location override. 'project' for .aim directory, 'global' for configured directory."
+            },
+            format: {
+              type: "string",
+              enum: ["json", "pretty"],
+              description: "Output format. 'json' (default) for structured data, 'pretty' for human-readable text."
             }
           },
         },
@@ -665,15 +707,14 @@ WHAT IT SEARCHES: Matches query (case-insensitive) against:
 
 VS aim_open_nodes: Use search when you need fuzzy matching. Use open_nodes when you know exact entity names.
 
-RETURNS: Matching entities and relations between them.
-
-DATABASE: Searches within the specified 'context' database, or master database if not specified.
+FORMAT OPTIONS:
+- "json" (default): Structured JSON for programmatic use
+- "pretty": Human-readable text format
 
 EXAMPLES:
-- Master database (default): aim_search_nodes({query: "John"})
-- Work database: aim_search_nodes({context: "work", query: "project"})
-- Search by type: aim_search_nodes({query: "person"})
-- Search observation content: aim_search_nodes({query: "Seattle"})`,
+- aim_search_nodes({query: "John"}) - JSON format
+- aim_search_nodes({query: "project", format: "pretty"}) - Human-readable
+- aim_search_nodes({context: "work", query: "Shane", format: "pretty"})`,
         inputSchema: {
           type: "object",
           properties: {
@@ -687,6 +728,11 @@ EXAMPLES:
               description: "Optional storage location override. 'project' for .aim directory, 'global' for configured directory."
             },
             query: { type: "string", description: "Search text to match against entity names, entity types, and observation content (case-insensitive)" },
+            format: {
+              type: "string",
+              enum: ["json", "pretty"],
+              description: "Output format. 'json' (default) for structured data, 'pretty' for human-readable text."
+            }
           },
           required: ["query"],
         },
@@ -699,11 +745,14 @@ VS aim_search_nodes: Use open_nodes for exact name lookup. Use search_nodes when
 
 RETURNS: Requested entities and relations between them. Non-existent names are silently ignored.
 
-DATABASE: Retrieves from the specified 'context' database, or master database if not specified.
+FORMAT OPTIONS:
+- "json" (default): Structured JSON for programmatic use
+- "pretty": Human-readable text format
 
 EXAMPLES:
-- Master database (default): aim_open_nodes({names: ["John", "TechConf2024"]})
-- Work database: aim_open_nodes({context: "work", names: ["Q4_Project", "Alice"]})`,
+- aim_open_nodes({names: ["John", "TechConf2024"]}) - JSON format
+- aim_open_nodes({names: ["Shane"], format: "pretty"}) - Human-readable
+- aim_open_nodes({context: "work", names: ["Q4_Project"], format: "pretty"})`,
         inputSchema: {
           type: "object",
           properties: {
@@ -714,13 +763,18 @@ EXAMPLES:
             location: {
               type: "string",
               enum: ["project", "global"],
-              description: "Optional storage location override. 'project' forces project-local .aim directory, 'global' forces global directory. If not specified, uses automatic detection."
+              description: "Optional storage location override. 'project' for .aim directory, 'global' for configured directory."
             },
             names: {
               type: "array",
               items: { type: "string" },
               description: "An array of entity names to retrieve",
             },
+            format: {
+              type: "string",
+              enum: ["json", "pretty"],
+              description: "Output format. 'json' (default) for structured data, 'pretty' for human-readable text."
+            }
           },
           required: ["names"],
         },
@@ -774,12 +828,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case "aim_delete_relations":
       await knowledgeGraphManager.deleteRelations(args.relations as Relation[], args.context as string, args.location as 'project' | 'global');
       return { content: [{ type: "text", text: "Relations deleted successfully" }] };
-    case "aim_read_graph":
-      return { content: [{ type: "text", text: JSON.stringify(await knowledgeGraphManager.readGraph(args.context as string, args.location as 'project' | 'global'), null, 2) }] };
-    case "aim_search_nodes":
-      return { content: [{ type: "text", text: JSON.stringify(await knowledgeGraphManager.searchNodes(args.query as string, args.context as string, args.location as 'project' | 'global'), null, 2) }] };
-    case "aim_open_nodes":
-      return { content: [{ type: "text", text: JSON.stringify(await knowledgeGraphManager.openNodes(args.names as string[], args.context as string, args.location as 'project' | 'global'), null, 2) }] };
+    case "aim_read_graph": {
+      const graph = await knowledgeGraphManager.readGraph(args.context as string, args.location as 'project' | 'global');
+      const output = args.format === 'pretty'
+        ? formatGraphPretty(graph, args.context as string)
+        : JSON.stringify(graph, null, 2);
+      return { content: [{ type: "text", text: output }] };
+    }
+    case "aim_search_nodes": {
+      const graph = await knowledgeGraphManager.searchNodes(args.query as string, args.context as string, args.location as 'project' | 'global');
+      const output = args.format === 'pretty'
+        ? formatGraphPretty(graph, args.context as string)
+        : JSON.stringify(graph, null, 2);
+      return { content: [{ type: "text", text: output }] };
+    }
+    case "aim_open_nodes": {
+      const graph = await knowledgeGraphManager.openNodes(args.names as string[], args.context as string, args.location as 'project' | 'global');
+      const output = args.format === 'pretty'
+        ? formatGraphPretty(graph, args.context as string)
+        : JSON.stringify(graph, null, 2);
+      return { content: [{ type: "text", text: output }] };
+    }
     case "aim_list_databases":
       return { content: [{ type: "text", text: JSON.stringify(await knowledgeGraphManager.listDatabases(), null, 2) }] };
     default:
