@@ -395,11 +395,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "aim_memory_store",
-        description: `Create multiple new entities in the knowledge graph.
+        description: `Store new memories. Use this to remember people, projects, concepts, or any information worth persisting.
 
-AIM (AI Memory) provides persistent memory for AI assistants using a local knowledge graph. The 'aim_' prefix groups all memory tools together.
+AIM (AI Memory) provides persistent memory for AI assistants. The 'aim_memory_' prefix groups all memory tools together.
 
-WHAT'S STORED: Entities (people, projects, concepts), relations between them, and observations (facts about entities).
+WHAT'S STORED: Memories have a name, type (person/project/concept/etc.), and observations (facts about them).
 
 DATABASES: Use the 'context' parameter to organize memories into separate graphs:
 - Leave blank: Uses the master database (default for general information)
@@ -453,9 +453,9 @@ EXAMPLES:
       },
       {
         name: "aim_memory_link",
-        description: `Create relations (edges) between entities in the knowledge graph.
+        description: `Link two memories together with a relationship. Use this to connect related information.
 
-RELATION STRUCTURE: Each relation has 'from' (subject), 'relationType' (verb), and 'to' (object).
+RELATION STRUCTURE: Each link has 'from' (subject), 'relationType' (verb), and 'to' (object).
 - Use active voice verbs: "manages", "works_at", "knows", "attended", "created"
 - Read as: "from relationType to" (e.g., "Alice manages Q4_Project")
 - Avoid passive: use "manages" not "is_managed_by"
@@ -500,9 +500,9 @@ EXAMPLES:
       },
       {
         name: "aim_memory_add_facts",
-        description: `Add new observations (facts) to existing entities.
+        description: `Add new facts to an existing memory. Use this to append information to something already stored.
 
-IMPORTANT: Entity must already exist - use aim_memory_store first. Throws error if entity not found.
+IMPORTANT: Memory must already exist - use aim_memory_store first. Throws error if not found.
 
 RETURNS: Array of {entityName, addedObservations} showing what was added (duplicates are ignored).
 
@@ -544,7 +544,7 @@ EXAMPLES:
       },
       {
         name: "aim_memory_forget",
-        description: `Delete multiple entities and their associated relations from the knowledge graph.
+        description: `Forget memories. Removes memories and their associated links.
 
 DATABASE SELECTION: Entities are deleted from the specified database's knowledge graph.
 
@@ -578,7 +578,7 @@ EXAMPLES:
       },
       {
         name: "aim_memory_remove_facts",
-        description: `Delete specific observations from entities in the knowledge graph.
+        description: `Remove specific facts from a memory. Keeps the memory but removes selected observations.
 
 DATABASE SELECTION: Observations are deleted from entities within the specified database's knowledge graph.
 
@@ -622,7 +622,7 @@ EXAMPLES:
       },
       {
         name: "aim_memory_unlink",
-        description: `Delete multiple relations from the knowledge graph.
+        description: `Remove links between memories. Keeps the memories but removes their connections.
 
 DATABASE SELECTION: Relations are deleted from the specified database's knowledge graph.
 
@@ -664,7 +664,7 @@ EXAMPLES:
       },
       {
         name: "aim_memory_read_all",
-        description: `Read the entire knowledge graph.
+        description: `Read all memories in a database. Returns every stored memory and their links.
 
 FORMAT OPTIONS:
 - "json" (default): Structured JSON for programmatic use
@@ -698,14 +698,14 @@ EXAMPLES:
       },
       {
         name: "aim_memory_search",
-        description: `Fuzzy search for entities in the knowledge graph. Use this when you don't know exact entity names.
+        description: `Search memories by keyword. Use this when you don't know the exact name of what you're looking for.
 
 WHAT IT SEARCHES: Matches query (case-insensitive) against:
-- Entity names (e.g., "John" matches "John_Smith")
-- Entity types (e.g., "person" matches all person entities)
-- Observation content (e.g., "Seattle" matches entities with Seattle in their observations)
+- Memory names (e.g., "John" matches "John_Smith")
+- Memory types (e.g., "person" matches all person memories)
+- Facts/observations (e.g., "Seattle" matches memories mentioning Seattle)
 
-VS aim_memory_get: Use search when you need fuzzy matching. Use open_nodes when you know exact entity names.
+VS aim_memory_get: Use aim_memory_search for fuzzy matching. Use aim_memory_get when you know exact names.
 
 FORMAT OPTIONS:
 - "json" (default): Structured JSON for programmatic use
@@ -739,9 +739,9 @@ EXAMPLES:
       },
       {
         name: "aim_memory_get",
-        description: `Retrieve specific entities by exact name. Use this when you know the exact entity names you want.
+        description: `Retrieve specific memories by exact name. Use this when you know exactly what you're looking for.
 
-VS aim_memory_search: Use open_nodes for exact name lookup. Use search_nodes when you need fuzzy matching or don't know exact names.
+VS aim_memory_search: Use aim_memory_get for exact name lookup. Use aim_memory_search for fuzzy matching or when you don't know exact names.
 
 RETURNS: Requested entities and relations between them. Non-existent names are silently ignored.
 
