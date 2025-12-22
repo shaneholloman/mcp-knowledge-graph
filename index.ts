@@ -394,7 +394,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
-        name: "aim_create_entities",
+        name: "aim_memory_store",
         description: `Create multiple new entities in the knowledge graph.
 
 AIM (AI Memory) provides persistent memory for AI assistants using a local knowledge graph. The 'aim_' prefix groups all memory tools together.
@@ -415,10 +415,10 @@ STORAGE LOCATIONS: Files are stored as JSONL (e.g., memory.jsonl, memory-work.js
 RETURNS: Array of created entities.
 
 EXAMPLES:
-- Master database (default): aim_create_entities({entities: [{name: "John", entityType: "person", observations: ["Met at conference"]}]})
-- Work database: aim_create_entities({context: "work", entities: [{name: "Q4_Project", entityType: "project", observations: ["Due December 2024"]}]})
-- Master database in global location: aim_create_entities({location: "global", entities: [{name: "John", entityType: "person", observations: ["Met at conference"]}]})
-- Work database in project location: aim_create_entities({context: "work", location: "project", entities: [{name: "Q4_Project", entityType: "project", observations: ["Due December 2024"]}]})`,
+- Master database (default): aim_memory_store({entities: [{name: "John", entityType: "person", observations: ["Met at conference"]}]})
+- Work database: aim_memory_store({context: "work", entities: [{name: "Q4_Project", entityType: "project", observations: ["Due December 2024"]}]})
+- Master database in global location: aim_memory_store({location: "global", entities: [{name: "John", entityType: "person", observations: ["Met at conference"]}]})
+- Work database in project location: aim_memory_store({context: "work", location: "project", entities: [{name: "Q4_Project", entityType: "project", observations: ["Due December 2024"]}]})`,
         inputSchema: {
           type: "object",
           properties: {
@@ -452,7 +452,7 @@ EXAMPLES:
         },
       },
       {
-        name: "aim_create_relations",
+        name: "aim_memory_link",
         description: `Create relations (edges) between entities in the knowledge graph.
 
 RELATION STRUCTURE: Each relation has 'from' (subject), 'relationType' (verb), and 'to' (object).
@@ -467,9 +467,9 @@ RETURNS: Array of created relations (duplicates are ignored).
 DATABASE: Relations are created in the specified 'context' database, or master database if not specified.
 
 EXAMPLES:
-- aim_create_relations({relations: [{from: "John", to: "TechConf2024", relationType: "attended"}]})
-- aim_create_relations({context: "work", relations: [{from: "Alice", to: "Q4_Project", relationType: "manages"}]})
-- Multiple: aim_create_relations({relations: [{from: "John", to: "Alice", relationType: "knows"}, {from: "John", to: "Acme_Corp", relationType: "works_at"}]})`,
+- aim_memory_link({relations: [{from: "John", to: "TechConf2024", relationType: "attended"}]})
+- aim_memory_link({context: "work", relations: [{from: "Alice", to: "Q4_Project", relationType: "manages"}]})
+- Multiple: aim_memory_link({relations: [{from: "John", to: "Alice", relationType: "knows"}, {from: "John", to: "Acme_Corp", relationType: "works_at"}]})`,
         inputSchema: {
           type: "object",
           properties: {
@@ -499,18 +499,18 @@ EXAMPLES:
         },
       },
       {
-        name: "aim_add_observations",
+        name: "aim_memory_add_facts",
         description: `Add new observations (facts) to existing entities.
 
-IMPORTANT: Entity must already exist - use aim_create_entities first. Throws error if entity not found.
+IMPORTANT: Entity must already exist - use aim_memory_store first. Throws error if entity not found.
 
 RETURNS: Array of {entityName, addedObservations} showing what was added (duplicates are ignored).
 
 DATABASE: Adds to entities in the specified 'context' database, or master database if not specified.
 
 EXAMPLES:
-- aim_add_observations({observations: [{entityName: "John", contents: ["Lives in Seattle", "Works in tech"]}]})
-- aim_add_observations({context: "work", observations: [{entityName: "Q4_Project", contents: ["Behind schedule", "Need more resources"]}]})`,
+- aim_memory_add_facts({observations: [{entityName: "John", contents: ["Lives in Seattle", "Works in tech"]}]})
+- aim_memory_add_facts({context: "work", observations: [{entityName: "Q4_Project", contents: ["Behind schedule", "Need more resources"]}]})`,
         inputSchema: {
           type: "object",
           properties: {
@@ -543,7 +543,7 @@ EXAMPLES:
         },
       },
       {
-        name: "aim_delete_entities",
+        name: "aim_memory_forget",
         description: `Delete multiple entities and their associated relations from the knowledge graph.
 
 DATABASE SELECTION: Entities are deleted from the specified database's knowledge graph.
@@ -551,10 +551,10 @@ DATABASE SELECTION: Entities are deleted from the specified database's knowledge
 LOCATION OVERRIDE: Use the 'location' parameter to force deletion from 'project' (.aim directory) or 'global' (configured directory). Leave blank for auto-detection.
 
 EXAMPLES:
-- Master database (default): aim_delete_entities({entityNames: ["OldProject"]})
-- Work database: aim_delete_entities({context: "work", entityNames: ["CompletedTask", "CancelledMeeting"]})
-- Master database in global location: aim_delete_entities({location: "global", entityNames: ["OldProject"]})
-- Personal database in project location: aim_delete_entities({context: "personal", location: "project", entityNames: ["ExpiredReminder"]})`,
+- Master database (default): aim_memory_forget({entityNames: ["OldProject"]})
+- Work database: aim_memory_forget({context: "work", entityNames: ["CompletedTask", "CancelledMeeting"]})
+- Master database in global location: aim_memory_forget({location: "global", entityNames: ["OldProject"]})
+- Personal database in project location: aim_memory_forget({context: "personal", location: "project", entityNames: ["ExpiredReminder"]})`,
         inputSchema: {
           type: "object",
           properties: {
@@ -577,7 +577,7 @@ EXAMPLES:
         },
       },
       {
-        name: "aim_delete_observations",
+        name: "aim_memory_remove_facts",
         description: `Delete specific observations from entities in the knowledge graph.
 
 DATABASE SELECTION: Observations are deleted from entities within the specified database's knowledge graph.
@@ -585,10 +585,10 @@ DATABASE SELECTION: Observations are deleted from entities within the specified 
 LOCATION OVERRIDE: Use the 'location' parameter to force deletion from 'project' (.aim directory) or 'global' (configured directory). Leave blank for auto-detection.
 
 EXAMPLES:
-- Master database (default): aim_delete_observations({deletions: [{entityName: "John", observations: ["Outdated info"]}]})
-- Work database: aim_delete_observations({context: "work", deletions: [{entityName: "Project", observations: ["Old deadline"]}]})
-- Master database in global location: aim_delete_observations({location: "global", deletions: [{entityName: "John", observations: ["Outdated info"]}]})
-- Health database in project location: aim_delete_observations({context: "health", location: "project", deletions: [{entityName: "Exercise", observations: ["Injured knee"]}]})`,
+- Master database (default): aim_memory_remove_facts({deletions: [{entityName: "John", observations: ["Outdated info"]}]})
+- Work database: aim_memory_remove_facts({context: "work", deletions: [{entityName: "Project", observations: ["Old deadline"]}]})
+- Master database in global location: aim_memory_remove_facts({location: "global", deletions: [{entityName: "John", observations: ["Outdated info"]}]})
+- Health database in project location: aim_memory_remove_facts({context: "health", location: "project", deletions: [{entityName: "Exercise", observations: ["Injured knee"]}]})`,
         inputSchema: {
           type: "object",
           properties: {
@@ -621,7 +621,7 @@ EXAMPLES:
         },
       },
       {
-        name: "aim_delete_relations",
+        name: "aim_memory_unlink",
         description: `Delete multiple relations from the knowledge graph.
 
 DATABASE SELECTION: Relations are deleted from the specified database's knowledge graph.
@@ -629,10 +629,10 @@ DATABASE SELECTION: Relations are deleted from the specified database's knowledg
 LOCATION OVERRIDE: Use the 'location' parameter to force deletion from 'project' (.aim directory) or 'global' (configured directory). Leave blank for auto-detection.
 
 EXAMPLES:
-- Master database (default): aim_delete_relations({relations: [{from: "John", to: "OldCompany", relationType: "worked_at"}]})
-- Work database: aim_delete_relations({context: "work", relations: [{from: "Alice", to: "CancelledProject", relationType: "manages"}]})
-- Master database in global location: aim_delete_relations({location: "global", relations: [{from: "John", to: "OldCompany", relationType: "worked_at"}]})
-- Personal database in project location: aim_delete_relations({context: "personal", location: "project", relations: [{from: "Me", to: "OldHobby", relationType: "enjoys"}]})`,
+- Master database (default): aim_memory_unlink({relations: [{from: "John", to: "OldCompany", relationType: "worked_at"}]})
+- Work database: aim_memory_unlink({context: "work", relations: [{from: "Alice", to: "CancelledProject", relationType: "manages"}]})
+- Master database in global location: aim_memory_unlink({location: "global", relations: [{from: "John", to: "OldCompany", relationType: "worked_at"}]})
+- Personal database in project location: aim_memory_unlink({context: "personal", location: "project", relations: [{from: "Me", to: "OldHobby", relationType: "enjoys"}]})`,
         inputSchema: {
           type: "object",
           properties: {
@@ -663,7 +663,7 @@ EXAMPLES:
         },
       },
       {
-        name: "aim_read_graph",
+        name: "aim_memory_read_all",
         description: `Read the entire knowledge graph.
 
 FORMAT OPTIONS:
@@ -673,9 +673,9 @@ FORMAT OPTIONS:
 DATABASE: Reads from the specified 'context' database, or master database if not specified.
 
 EXAMPLES:
-- aim_read_graph({}) - JSON format
-- aim_read_graph({format: "pretty"}) - Human-readable
-- aim_read_graph({context: "work", format: "pretty"}) - Work database, pretty`,
+- aim_memory_read_all({}) - JSON format
+- aim_memory_read_all({format: "pretty"}) - Human-readable
+- aim_memory_read_all({context: "work", format: "pretty"}) - Work database, pretty`,
         inputSchema: {
           type: "object",
           properties: {
@@ -697,7 +697,7 @@ EXAMPLES:
         },
       },
       {
-        name: "aim_search_nodes",
+        name: "aim_memory_search",
         description: `Fuzzy search for entities in the knowledge graph. Use this when you don't know exact entity names.
 
 WHAT IT SEARCHES: Matches query (case-insensitive) against:
@@ -705,16 +705,16 @@ WHAT IT SEARCHES: Matches query (case-insensitive) against:
 - Entity types (e.g., "person" matches all person entities)
 - Observation content (e.g., "Seattle" matches entities with Seattle in their observations)
 
-VS aim_open_nodes: Use search when you need fuzzy matching. Use open_nodes when you know exact entity names.
+VS aim_memory_get: Use search when you need fuzzy matching. Use open_nodes when you know exact entity names.
 
 FORMAT OPTIONS:
 - "json" (default): Structured JSON for programmatic use
 - "pretty": Human-readable text format
 
 EXAMPLES:
-- aim_search_nodes({query: "John"}) - JSON format
-- aim_search_nodes({query: "project", format: "pretty"}) - Human-readable
-- aim_search_nodes({context: "work", query: "Shane", format: "pretty"})`,
+- aim_memory_search({query: "John"}) - JSON format
+- aim_memory_search({query: "project", format: "pretty"}) - Human-readable
+- aim_memory_search({context: "work", query: "Shane", format: "pretty"})`,
         inputSchema: {
           type: "object",
           properties: {
@@ -738,10 +738,10 @@ EXAMPLES:
         },
       },
       {
-        name: "aim_open_nodes",
+        name: "aim_memory_get",
         description: `Retrieve specific entities by exact name. Use this when you know the exact entity names you want.
 
-VS aim_search_nodes: Use open_nodes for exact name lookup. Use search_nodes when you need fuzzy matching or don't know exact names.
+VS aim_memory_search: Use open_nodes for exact name lookup. Use search_nodes when you need fuzzy matching or don't know exact names.
 
 RETURNS: Requested entities and relations between them. Non-existent names are silently ignored.
 
@@ -750,9 +750,9 @@ FORMAT OPTIONS:
 - "pretty": Human-readable text format
 
 EXAMPLES:
-- aim_open_nodes({names: ["John", "TechConf2024"]}) - JSON format
-- aim_open_nodes({names: ["Shane"], format: "pretty"}) - Human-readable
-- aim_open_nodes({context: "work", names: ["Q4_Project"], format: "pretty"})`,
+- aim_memory_get({names: ["John", "TechConf2024"]}) - JSON format
+- aim_memory_get({names: ["Shane"], format: "pretty"}) - Human-readable
+- aim_memory_get({context: "work", names: ["Q4_Project"], format: "pretty"})`,
         inputSchema: {
           type: "object",
           properties: {
@@ -780,7 +780,7 @@ EXAMPLES:
         },
       },
       {
-        name: "aim_list_databases",
+        name: "aim_memory_list_stores",
         description: `List all available memory databases and show current storage location.
 
 DATABASE TYPES:
@@ -795,7 +795,7 @@ RETURNS: {project_databases: [...], global_databases: [...], current_location: "
 Use this to discover what databases exist before querying them.
 
 EXAMPLES:
-- aim_list_databases() - Shows all available databases and current storage location`,
+- aim_memory_list_stores() - Shows all available databases and current storage location`,
         inputSchema: {
           type: "object",
           properties: {},
@@ -813,43 +813,43 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   switch (name) {
-    case "aim_create_entities":
+    case "aim_memory_store":
       return { content: [{ type: "text", text: JSON.stringify(await knowledgeGraphManager.createEntities(args.entities as Entity[], args.context as string, args.location as 'project' | 'global'), null, 2) }] };
-    case "aim_create_relations":
+    case "aim_memory_link":
       return { content: [{ type: "text", text: JSON.stringify(await knowledgeGraphManager.createRelations(args.relations as Relation[], args.context as string, args.location as 'project' | 'global'), null, 2) }] };
-    case "aim_add_observations":
+    case "aim_memory_add_facts":
       return { content: [{ type: "text", text: JSON.stringify(await knowledgeGraphManager.addObservations(args.observations as { entityName: string; contents: string[] }[], args.context as string, args.location as 'project' | 'global'), null, 2) }] };
-    case "aim_delete_entities":
+    case "aim_memory_forget":
       await knowledgeGraphManager.deleteEntities(args.entityNames as string[], args.context as string, args.location as 'project' | 'global');
       return { content: [{ type: "text", text: "Entities deleted successfully" }] };
-    case "aim_delete_observations":
+    case "aim_memory_remove_facts":
       await knowledgeGraphManager.deleteObservations(args.deletions as { entityName: string; observations: string[] }[], args.context as string, args.location as 'project' | 'global');
       return { content: [{ type: "text", text: "Observations deleted successfully" }] };
-    case "aim_delete_relations":
+    case "aim_memory_unlink":
       await knowledgeGraphManager.deleteRelations(args.relations as Relation[], args.context as string, args.location as 'project' | 'global');
       return { content: [{ type: "text", text: "Relations deleted successfully" }] };
-    case "aim_read_graph": {
+    case "aim_memory_read_all": {
       const graph = await knowledgeGraphManager.readGraph(args.context as string, args.location as 'project' | 'global');
       const output = args.format === 'pretty'
         ? formatGraphPretty(graph, args.context as string)
         : JSON.stringify(graph, null, 2);
       return { content: [{ type: "text", text: output }] };
     }
-    case "aim_search_nodes": {
+    case "aim_memory_search": {
       const graph = await knowledgeGraphManager.searchNodes(args.query as string, args.context as string, args.location as 'project' | 'global');
       const output = args.format === 'pretty'
         ? formatGraphPretty(graph, args.context as string)
         : JSON.stringify(graph, null, 2);
       return { content: [{ type: "text", text: output }] };
     }
-    case "aim_open_nodes": {
+    case "aim_memory_get": {
       const graph = await knowledgeGraphManager.openNodes(args.names as string[], args.context as string, args.location as 'project' | 'global');
       const output = args.format === 'pretty'
         ? formatGraphPretty(graph, args.context as string)
         : JSON.stringify(graph, null, 2);
       return { content: [{ type: "text", text: output }] };
     }
-    case "aim_list_databases":
+    case "aim_memory_list_stores":
       return { content: [{ type: "text", text: JSON.stringify(await knowledgeGraphManager.listDatabases(), null, 2) }] };
     default:
       throw new Error(`Unknown tool: ${name}`);
