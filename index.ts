@@ -10,8 +10,14 @@ import { promises as fs } from 'fs';
 import { existsSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import minimist from 'minimist';
 import { isAbsolute } from 'path';
+
+// Read version from package.json - single source of truth
+// Path is '../package.json' because compiled code runs from dist/
+const require = createRequire(import.meta.url);
+const pkg = require('../package.json') as { version: string; name: string };
 
 // Parse args and handle paths safely
 const argv = minimist(process.argv.slice(2));
@@ -46,8 +52,9 @@ const FILE_MARKER = {
 };
 
 // Project detection - look for common project markers
+// .aim is checked first: if it exists, that's an explicit signal for project-local storage
 function findProjectRoot(startDir: string = process.cwd()): string | null {
-  const projectMarkers = ['.git', 'package.json', 'pyproject.toml', 'Cargo.toml', 'go.mod'];
+  const projectMarkers = ['.aim', '.git', 'package.json', 'pyproject.toml', 'Cargo.toml', 'go.mod'];
   let currentDir = startDir;
   const maxDepth = 5;
 
@@ -339,13 +346,13 @@ const knowledgeGraphManager = new KnowledgeGraphManager();
 
 // The server instance and tools exposed to AI models
 const server = new Server({
-  name: "mcp-knowledge-graph",
-  version: "1.0.1",
-},    {
-    capabilities: {
-      tools: {},
-    },
-  },);
+  name: pkg.name,
+  version: pkg.version,
+}, {
+  capabilities: {
+    tools: {},
+  },
+});
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
@@ -354,21 +361,22 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         name: "aim_create_entities",
         description: `Create multiple new entities in the knowledge graph.
 
-DATABASE SELECTION: By default, all memories are stored in the master database. Use the 'context' parameter to organize information into separate knowledge graphs for different areas of life or work.
+AIM (AI Memory) provides persistent memory for AI assistants using a local knowledge graph. The 'aim_' prefix groups all memory tools together.
 
-STORAGE LOCATION: Files are stored in the user's configured directory, or project-local .aim directory if one exists. Each database creates its own file (e.g., memory-work.jsonl, memory-personal.jsonl).
+WHAT'S STORED: Entities (people, projects, concepts), relations between them, and observations (facts about entities).
 
-LOCATION OVERRIDE: Use the 'location' parameter to force storage in a specific location:
-- 'project': Always use project-local .aim directory (creates if needed)
-- 'global': Always use global configured directory
-- Leave blank: Auto-detect (project if .aim exists, otherwise global)
-
-WHEN TO USE DATABASES:
-- Any descriptive name: 'work', 'personal', 'health', 'research', 'basket-weaving', 'book-club', etc.
+DATABASES: Use the 'context' parameter to organize memories into separate graphs:
+- Leave blank: Uses the master database (default for general information)
+- Any name: Creates/uses a named database ('work', 'personal', 'health', 'research', etc.)
 - New databases are created automatically - no setup required
-- IMPORTANT: Use consistent, simple names - prefer 'work' over 'work-stuff' or 'job-related'
-- Common examples: 'work' (professional), 'personal' (private), 'health' (medical), 'research' (academic)  
-- Leave blank: General information or when unsure (uses master database)
+- IMPORTANT: Use consistent, simple names - prefer 'work' over 'work-stuff'
+
+STORAGE LOCATIONS: Files are stored as JSONL (e.g., memory.jsonl, memory-work.jsonl):
+- Project-local: .aim directory in project root (auto-detected if exists)
+- Global: User's configured --memory-path directory
+- Use 'location' parameter to override: 'project' or 'global'
+
+RETURNS: Array of created entities.
 
 EXAMPLES:
 - Master database (default): aim_create_entities({entities: [{name: "John", entityType: "person", observations: ["Met at conference"]}]})
@@ -409,17 +417,23 @@ EXAMPLES:
       },
       {
         name: "aim_create_relations",
-        description: `Create multiple new relations between entities in the knowledge graph. Relations should be in active voice.
+        description: `Create relations (edges) between entities in the knowledge graph.
 
-DATABASE SELECTION: Relations are created within the specified database's knowledge graph. Entities must exist in the same database.
+RELATION STRUCTURE: Each relation has 'from' (subject), 'relationType' (verb), and 'to' (object).
+- Use active voice verbs: "manages", "works_at", "knows", "attended", "created"
+- Read as: "from relationType to" (e.g., "Alice manages Q4_Project")
+- Avoid passive: use "manages" not "is_managed_by"
 
-LOCATION OVERRIDE: Use the 'location' parameter to force storage in 'project' (.aim directory) or 'global' (configured directory). Leave blank for auto-detection.
+IMPORTANT: Both 'from' and 'to' entities must already exist in the same database.
+
+RETURNS: Array of created relations (duplicates are ignored).
+
+DATABASE: Relations are created in the specified 'context' database, or master database if not specified.
 
 EXAMPLES:
-- Master database (default): aim_create_relations({relations: [{from: "John", to: "TechConf2024", relationType: "attended"}]})
-- Work database: aim_create_relations({context: "work", relations: [{from: "Alice", to: "Q4_Project", relationType: "manages"}]})
-- Master database in global location: aim_create_relations({location: "global", relations: [{from: "John", to: "TechConf2024", relationType: "attended"}]})
-- Personal database in project location: aim_create_relations({context: "personal", location: "project", relations: [{from: "Mom", to: "Gardening", relationType: "enjoys"}]})`,
+- aim_create_relations({relations: [{from: "John", to: "TechConf2024", relationType: "attended"}]})
+- aim_create_relations({context: "work", relations: [{from: "Alice", to: "Q4_Project", relationType: "manages"}]})
+- Multiple: aim_create_relations({relations: [{from: "John", to: "Alice", relationType: "knows"}, {from: "John", to: "Acme_Corp", relationType: "works_at"}]})`,
         inputSchema: {
           type: "object",
           properties: {
@@ -450,17 +464,17 @@ EXAMPLES:
       },
       {
         name: "aim_add_observations",
-        description: `Add new observations to existing entities in the knowledge graph.
+        description: `Add new observations (facts) to existing entities.
 
-DATABASE SELECTION: Observations are added to entities within the specified database's knowledge graph.
+IMPORTANT: Entity must already exist - use aim_create_entities first. Throws error if entity not found.
 
-LOCATION OVERRIDE: Use the 'location' parameter to force storage in 'project' (.aim directory) or 'global' (configured directory). Leave blank for auto-detection.
+RETURNS: Array of {entityName, addedObservations} showing what was added (duplicates are ignored).
+
+DATABASE: Adds to entities in the specified 'context' database, or master database if not specified.
 
 EXAMPLES:
-- Master database (default): aim_add_observations({observations: [{entityName: "John", contents: ["Lives in Seattle", "Works in tech"]}]})
-- Work database: aim_add_observations({context: "work", observations: [{entityName: "Q4_Project", contents: ["Behind schedule", "Need more resources"]}]})
-- Master database in global location: aim_add_observations({location: "global", observations: [{entityName: "John", contents: ["Lives in Seattle", "Works in tech"]}]})
-- Health database in project location: aim_add_observations({context: "health", location: "project", observations: [{entityName: "Daily_Routine", contents: ["30min morning walk", "8 glasses water"]}]})`,
+- aim_add_observations({observations: [{entityName: "John", contents: ["Lives in Seattle", "Works in tech"]}]})
+- aim_add_observations({context: "work", observations: [{entityName: "Q4_Project", contents: ["Behind schedule", "Need more resources"]}]})`,
         inputSchema: {
           type: "object",
           properties: {
@@ -642,47 +656,54 @@ EXAMPLES:
       },
       {
         name: "aim_search_nodes",
-        description: `Search for nodes in the knowledge graph based on a query.
+        description: `Fuzzy search for entities in the knowledge graph. Use this when you don't know exact entity names.
 
-DATABASE SELECTION: Searches within the specified database or master database if no database is specified.
+WHAT IT SEARCHES: Matches query (case-insensitive) against:
+- Entity names (e.g., "John" matches "John_Smith")
+- Entity types (e.g., "person" matches all person entities)
+- Observation content (e.g., "Seattle" matches entities with Seattle in their observations)
 
-LOCATION OVERRIDE: Use the 'location' parameter to force searching in 'project' (.aim directory) or 'global' (configured directory). Leave blank for auto-detection.
+VS aim_open_nodes: Use search when you need fuzzy matching. Use open_nodes when you know exact entity names.
+
+RETURNS: Matching entities and relations between them.
+
+DATABASE: Searches within the specified 'context' database, or master database if not specified.
 
 EXAMPLES:
 - Master database (default): aim_search_nodes({query: "John"})
 - Work database: aim_search_nodes({context: "work", query: "project"})
-- Master database in global location: aim_search_nodes({location: "global", query: "John"})
-- Personal database in project location: aim_search_nodes({context: "personal", location: "project", query: "family"})`,
+- Search by type: aim_search_nodes({query: "person"})
+- Search observation content: aim_search_nodes({query: "Seattle"})`,
         inputSchema: {
           type: "object",
           properties: {
             context: {
               type: "string",
-              description: "Optional memory context. Searches within the specified context's knowledge graph or master database if not specified."
+              description: "Optional database name. Searches within this database or master database if not specified."
             },
             location: {
               type: "string",
               enum: ["project", "global"],
-              description: "Optional storage location override. 'project' forces project-local .aim directory, 'global' forces global directory. If not specified, uses automatic detection."
+              description: "Optional storage location override. 'project' for .aim directory, 'global' for configured directory."
             },
-            query: { type: "string", description: "The search query to match against entity names, types, and observation content" },
+            query: { type: "string", description: "Search text to match against entity names, entity types, and observation content (case-insensitive)" },
           },
           required: ["query"],
         },
       },
       {
         name: "aim_open_nodes",
-        description: `Open specific nodes in the knowledge graph by their names.
+        description: `Retrieve specific entities by exact name. Use this when you know the exact entity names you want.
 
-DATABASE SELECTION: Retrieves entities from the specified database or master database if no database is specified.
+VS aim_search_nodes: Use open_nodes for exact name lookup. Use search_nodes when you need fuzzy matching or don't know exact names.
 
-LOCATION OVERRIDE: Use the 'location' parameter to force retrieval from 'project' (.aim directory) or 'global' (configured directory). Leave blank for auto-detection.
+RETURNS: Requested entities and relations between them. Non-existent names are silently ignored.
+
+DATABASE: Retrieves from the specified 'context' database, or master database if not specified.
 
 EXAMPLES:
 - Master database (default): aim_open_nodes({names: ["John", "TechConf2024"]})
-- Work database: aim_open_nodes({context: "work", names: ["Q4_Project", "Alice"]})
-- Master database in global location: aim_open_nodes({location: "global", names: ["John", "TechConf2024"]})
-- Personal database in project location: aim_open_nodes({context: "personal", location: "project", names: ["Mom", "Birthday_Plans"]})`,
+- Work database: aim_open_nodes({context: "work", names: ["Q4_Project", "Alice"]})`,
         inputSchema: {
           type: "object",
           properties: {
@@ -706,9 +727,18 @@ EXAMPLES:
       },
       {
         name: "aim_list_databases",
-        description: `List all available memory databases in both project and global locations.
+        description: `List all available memory databases and show current storage location.
 
-DISCOVERY: Shows which databases exist, where they're stored, and which location is currently active.
+DATABASE TYPES:
+- "default": The master database (memory.jsonl) - used when no context is specified
+- Named databases: Created via context parameter (e.g., "work" -> memory-work.jsonl)
+
+RETURNS: {project_databases: [...], global_databases: [...], current_location: "..."}
+- project_databases: Databases in .aim directory (if project detected)
+- global_databases: Databases in global --memory-path directory
+- current_location: Where operations will default to
+
+Use this to discover what databases exist before querying them.
 
 EXAMPLES:
 - aim_list_databases() - Shows all available databases and current storage location`,
