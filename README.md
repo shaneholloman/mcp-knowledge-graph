@@ -4,12 +4,12 @@
 
 Store and retrieve information across conversations using entities, relations, and observations. Works with Claude Code/Desktop and any MCP-compatible AI platform.
 
-## Why ".aim" and "aim_memory_" prefixes?
+## Why ".aim" and "aim_" prefixes?
 
 AIM stands for **AI Memory** - the core concept of this system. The three AIM elements provide clear organization and safety:
 
 - **`.aim` directories**: Keep AI memory files organized and easily identifiable
-- **`aim_memory_` tool prefixes**: Group all memory tools together and make their purpose obvious
+- **`aim_` tool prefixes**: Group related memory functions together in multi-tool setups
 - **`_aim` safety markers**: Each memory file starts with `{"type":"_aim","source":"mcp-knowledge-graph"}` to prevent accidental overwrites of unrelated JSONL files
 
 This consistent AIM naming makes it obvious which directories, tools, and files belong to the AI memory system.
