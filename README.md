@@ -290,7 +290,7 @@ Use `aim_memory_list_stores` to see all available databases:
 
 ## Requirements
 
-- Node.js 18+
+- Node.js 22+
 - MCP-compatible AI platform
 
 ## License
