@@ -19,7 +19,8 @@
   "scripts": {
     "build": "tsc && shx chmod +x dist/*.js",
     "prepare": "npm run build",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "test": "tsc -p tsconfig.test.json && node --test \"dist/test/**/*.test.js\""
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.0.1",

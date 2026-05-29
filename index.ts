@@ -9,7 +9,7 @@ import {
 import { promises as fs } from 'fs';
 import { existsSync } from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { createRequire } from 'module';
 import minimist from 'minimist';
 import { isAbsolute } from 'path';
@@ -51,6 +51,40 @@ const FILE_MARKER = {
   source: "mcp-knowledge-graph"
 };
 
+// Allowed shape for a `context` value. Context is interpolated into a filename
+// (`memory-${context}.jsonl`), so it must never introduce path separators or
+// directory-traversal segments. A context is a short identifier, not a path.
+const CONTEXT_PATTERN = /^[A-Za-z0-9_.-]+$/;
+
+// Reject any context that is malformed or able to escape the intended directory.
+// First line of defense (CWE-22 path traversal), applied before the value is
+// ever interpolated into a filename.
+export function assertContextSafe(context: string): void {
+  if (typeof context !== 'string' || context.length === 0) {
+    throw new Error('Invalid context: must be a non-empty string');
+  }
+  // Explicit traversal / separator rejection (defense in depth alongside the
+  // allow-list, and clearer errors for the common cases).
+  if (context === '.' || context === '..' || context.includes('/') || context.includes('\\')) {
+    throw new Error('Invalid context: must not contain path separators or traversal segments');
+  }
+  if (!CONTEXT_PATTERN.test(context)) {
+    throw new Error('Invalid context: only letters, digits, "_", "-", and "." are allowed');
+  }
+}
+
+// Containment check: the resolved target must live inside baseDir. Uses
+// path.relative so it is robust against `..`, absolute paths, and separator
+// differences across platforms.
+export function assertInScope(targetPath: string, baseDir: string): void {
+  const resolvedBase = path.resolve(baseDir);
+  const resolvedTarget = path.resolve(targetPath);
+  const rel = path.relative(resolvedBase, resolvedTarget);
+  if (rel === '' || rel === '..' || rel.startsWith('..' + path.sep) || isAbsolute(rel)) {
+    throw new Error('Resolved memory path escapes the configured storage directory');
+  }
+}
+
 // Project detection - look for common project markers
 // .aim is checked first: if it exists, that's an explicit signal for project-local storage
 function findProjectRoot(startDir: string = process.cwd()): string | null {
@@ -80,18 +114,27 @@ function findProjectRoot(startDir: string = process.cwd()): string | null {
 
 // Function to get memory file path based on context and optional location override
 function getMemoryFilePath(context?: string, location?: 'project' | 'global'): string {
+  // Validate the context BEFORE it is interpolated into a filename, so a
+  // traversal payload can never reach path.join.
+  if (context !== undefined) {
+    assertContextSafe(context);
+  }
   const filename = context ? `memory-${context}.jsonl` : 'memory.jsonl';
   
   // If location is explicitly specified, use it
   if (location === 'global') {
-    return path.join(baseMemoryPath, filename);
+    const candidate = path.join(baseMemoryPath, filename);
+    assertInScope(candidate, baseMemoryPath);
+    return candidate;
   }
   
   if (location === 'project') {
     const projectRoot = findProjectRoot();
     if (projectRoot) {
       const aimDir = path.join(projectRoot, '.aim');
-      return path.join(aimDir, filename); // Will create .aim if it doesn't exist
+      const candidate = path.join(aimDir, filename); // Will create .aim if it doesn't exist
+      assertInScope(candidate, aimDir);
+      return candidate;
     } else {
       throw new Error('No project detected - cannot use project location');
     }
@@ -102,12 +145,16 @@ function getMemoryFilePath(context?: string, location?: 'project' | 'global'): s
   if (projectRoot) {
     const aimDir = path.join(projectRoot, '.aim');
     if (existsSync(aimDir)) {
-      return path.join(aimDir, filename);
+      const candidate = path.join(aimDir, filename);
+      assertInScope(candidate, aimDir);
+      return candidate;
     }
   }
   
   // Fallback to configured base directory
-  return path.join(baseMemoryPath, filename);
+  const candidate = path.join(baseMemoryPath, filename);
+  assertInScope(candidate, baseMemoryPath);
+  return candidate;
 }
 
 // We are storing our memory using entities, relations, and observations in a graph structure
@@ -180,7 +227,9 @@ class KnowledgeGraphManager {
       // Check first line for our file marker
       const firstLine = JSON.parse(lines[0]!);
       if (firstLine.type !== "_aim" || firstLine.source !== "mcp-knowledge-graph") {
-        throw new Error(`File ${filePath} does not contain required _aim safety marker. This file may not belong to the knowledge graph system. Expected first line: {"type":"_aim","source":"mcp-knowledge-graph"}`);
+        // Do not echo the resolved absolute path: it leaks the configured base
+        // directory to the caller. Keep the message generic.
+        throw new Error('Target file does not contain the required _aim safety marker. It may not belong to the knowledge graph system.');
       }
       
       // Process remaining lines (skip metadata)
@@ -862,7 +911,12 @@ async function main() {
   console.error("Knowledge Graph MCP Server running on stdio");
 }
 
-main().catch((error) => {
-  console.error("Fatal error in main():", error);
-  process.exit(1);
-});
+// Only start the server when this module is executed directly (e.g. via the
+// bin entry), not when it is imported (e.g. by tests). This keeps the pure
+// helpers above importable without spinning up a stdio transport.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error("Fatal error in main():", error);
+    process.exit(1);
+  });
+}
